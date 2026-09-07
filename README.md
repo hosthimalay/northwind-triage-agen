@@ -6,7 +6,7 @@ reframing, architecture, a proof of concept, an MVP with real guardrails,
 and an honest accounting of what's still missing before production.
 
 **Northwind Outdoor Gear is a fictional client.** This is a synthetic
-take-home exercise I completed to practice the full FDE build cycle: problem
+exercise I completed to practice the full FDE build cycle: problem
 framing → architecture → POC → MVP, plus a second pass applying a
 5-part methodology (reframe → eval design → architecture → implementation
 plan → prove it) on top of that.
