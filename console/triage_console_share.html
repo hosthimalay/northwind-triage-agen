@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Northwind Claim Triage — Agent Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f4f5f0; --panel:#ffffff; --ink:#16241d; --ink-soft:#4b5a52;
+    --line:#dcdfd8; --line-soft:#eceee8;
+    --green:#2f6b4f; --green-bg:#e8f1ec;
+    --amber:#a8631b; --amber-bg:#faf0e4;
+    --red:#a6323b; --red-bg:#fbeaec;
+    --slate:#5b6b63;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'IBM Plex Sans', sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14px;}
+  .wrap{max-width:1240px;margin:0 auto;padding:28px 24px 60px;}
+
+  .masthead{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid var(--ink);padding-bottom:14px;margin-bottom:20px;flex-wrap:wrap;gap:14px;}
+  .masthead h1{font-size:20px;margin:0 0 4px;font-weight:700;letter-spacing:-0.01em;}
+  .masthead .sub{color:var(--slate);font-size:13px;}
+  .masthead .tag{font-family:var(--mono);font-size:11px;color:var(--slate);border:1px solid var(--line);padding:3px 8px;border-radius:3px;}
+
+  .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:20px;}
+  .mode-btn{font-family:var(--sans);font-size:13px;font-weight:600;padding:9px 16px;border-radius:3px;border:1px solid var(--ink);background:var(--panel);color:var(--ink);cursor:pointer;}
+  .mode-btn.primary{background:var(--ink);color:#fff;}
+  .mode-btn:disabled{opacity:0.45;cursor:default;}
+  .mode-btn:hover:not(:disabled){opacity:0.85;}
+  .reset-btn{font-family:var(--mono);font-size:12px;color:var(--slate);background:none;border:none;text-decoration:underline;cursor:pointer;padding:6px;}
+  .mode-note{font-size:12.5px;color:var(--slate);border-left:3px solid var(--line);padding-left:10px;flex:1;min-width:240px;}
+
+  .layout{display:grid;grid-template-columns:300px 1fr;gap:18px;align-items:start;}
+  @media (max-width:900px){.layout{grid-template-columns:1fr;}}
+
+  .queue{display:flex;flex-direction:column;gap:6px;}
+  .claim-row{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--line);padding:10px 12px;cursor:pointer;}
+  .claim-row.selected{outline:2px solid var(--ink);outline-offset:-2px;}
+  .claim-row .id{font-family:var(--mono);font-size:12px;color:var(--slate);}
+  .claim-row .desc{font-size:12.5px;margin-top:2px;color:var(--ink-soft);line-height:1.4;}
+  .claim-row .status{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;margin-top:6px;display:inline-block;padding:2px 6px;}
+  .status.pending{color:var(--slate);}
+  .status.approve{color:var(--green);background:var(--green-bg);}
+  .status.deny{color:var(--slate);background:var(--line-soft);}
+  .status.escalate{color:var(--amber);background:var(--amber-bg);}
+  .claim-row.border-approve{border-left-color:var(--green);}
+  .claim-row.border-deny{border-left-color:var(--slate);}
+  .claim-row.border-escalate{border-left-color:var(--amber);}
+
+  .panel{background:var(--panel);border:1px solid var(--line);padding:20px 22px;min-height:400px;}
+  .panel .empty{color:var(--slate);font-size:13px;padding:40px 0;text-align:center;}
+  .detail h2{font-size:16px;margin:0 0 2px;}
+  .detail .meta{font-family:var(--mono);font-size:12px;color:var(--slate);margin-bottom:14px;}
+  .detail .claim-text{background:var(--line-soft);padding:12px 14px;font-size:13.5px;line-height:1.5;margin-bottom:16px;border-left:3px solid var(--ink);}
+
+  .trace-step{display:grid;grid-template-columns:120px 1fr;gap:14px;padding:10px 0;border-top:1px solid var(--line-soft);}
+  .trace-step:first-of-type{border-top:none;}
+  .trace-step .label{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:var(--slate);padding-top:2px;}
+  .trace-step .body{font-size:13px;line-height:1.55;}
+  .trace-step .body .flag{display:inline-block;font-family:var(--mono);font-size:11px;padding:1px 6px;margin:2px 4px 2px 0;border-radius:2px;}
+  .flag.hit{background:var(--red-bg);color:var(--red);}
+  .flag.clear{background:var(--green-bg);color:var(--green);}
+  .flag.pol{background:var(--line-soft);color:var(--ink-soft);font-family:var(--mono);}
+  .decision-banner{display:flex;align-items:center;gap:10px;padding:12px 14px;margin-top:6px;font-weight:600;}
+  .decision-banner.approve{background:var(--green-bg);color:var(--green);}
+  .decision-banner.deny{background:var(--line-soft);color:var(--ink-soft);}
+  .decision-banner.escalate{background:var(--amber-bg);color:var(--amber);}
+  .decision-banner .conf{font-family:var(--mono);font-weight:400;font-size:12px;}
+
+  .summary{margin-top:26px;}
+  .summary h3{font-size:14px;margin:0 0 10px;}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--line-soft);}
+  th{font-family:var(--mono);font-weight:500;color:var(--slate);text-transform:uppercase;font-size:10.5px;letter-spacing:.03em;}
+  td.mono{font-family:var(--mono);}
+  .counts{display:flex;gap:18px;margin-top:14px;font-size:12.5px;color:var(--ink-soft);flex-wrap:wrap;}
+  .counts b{color:var(--ink);}
+
+  .footnote{color:var(--slate);font-size:11.5px;margin-top:26px;line-height:1.6;border-top:1px solid var(--line);padding-top:14px;}
+
+  /* --- key/access panel --- */
+  .access{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--ink);padding:14px 16px;margin-bottom:20px;}
+  .access .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:8px;}
+  .access select, .access input[type=password]{font-family:var(--sans);font-size:13px;padding:8px 10px;border:1px solid var(--line);border-radius:3px;background:#fff;color:var(--ink);}
+  .access input[type=password]{flex:1;min-width:220px;}
+  .access .hint{font-size:12px;color:var(--slate);margin-top:8px;line-height:1.5;}
+  .access .warn{color:var(--red);}
+
+  /* --- mobile responsiveness --- */
+  @media (max-width:640px){
+    .wrap{padding:18px 14px 40px;}
+    .masthead h1{font-size:17px;}
+    .mode-btn{font-size:12px;padding:8px 12px;flex:1 1 auto;}
+    .controls{flex-direction:column;align-items:stretch;}
+    .mode-note{border-left:none;padding-left:0;border-top:2px solid var(--line);padding-top:8px;}
+    .summary{overflow-x:auto;}
+    table{font-size:11px;}
+    .access .row{flex-direction:column;align-items:stretch;}
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="masthead">
+    <div>
+      <h1>Northwind Claim Triage — Agent Console</h1>
+      <div class="sub">Returns &amp; warranty claim triage · POC and MVP pipeline, same code base</div>
+    </div>
+    <div class="tag">return_policy_kb.json · 8 articles</div>
+  </div>
+
+  <div class="access">
+    <strong>Model access</strong> — this page makes a real API call per claim; it needs a key from whoever is running it.
+    <div class="row">
+      <select id="provider" onchange="updateKeyHint()">
+        <option value="openai">OpenAI (gpt-5.5)</option>
+        <option value="anthropic">Anthropic (claude-sonnet-5)</option>
+      </select>
+      <input type="password" id="api-key" placeholder="Paste your API key here — kept only in this browser tab, never saved or sent anywhere but the provider">
+    </div>
+    <div class="hint" id="key-hint"></div>
+    <div class="hint warn">Only paste a key into pages you trust — anyone with your browser's dev tools open while this tab is active could read it. Don't reuse a key you've shared elsewhere; generate a fresh one if unsure.</div>
+  </div>
+
+  <div class="controls">
+    <button class="mode-btn" id="btn-poc" onclick="runMode('poc')">Run POC — 3 claims, no guardrails</button>
+    <button class="mode-btn primary" id="btn-mvp" onclick="runMode('mvp')">Run MVP — all 8, guardrails on</button>
+    <button class="reset-btn" onclick="resetAll()">reset</button>
+    <div class="mode-note" id="mode-note">POC = retrieval + one LLM call only, exactly as Part 3 specifies. MVP layers the two hard-coded guardrails from Part 1 around that same call. Run POC first, then MVP, to see why the guardrail code exists.</div>
+  </div>
+
+  <div class="layout">
+    <div class="queue" id="queue"></div>
+    <div class="panel" id="detail"><div class="empty">Run a pipeline, then select a claim to see its trace.</div></div>
+  </div>
+
+  <div class="summary" id="summary" style="display:none">
+    <h3>Run summary — decision vs. author's expected outcome</h3>
+    <table>
+      <thead><tr><th>Claim</th><th>Value</th><th>Days</th><th>Prior/90d</th><th>Guardrail</th><th>Final decision</th><th>Expected</th><th>Match</th></tr></thead>
+      <tbody id="summary-body"></tbody>
+    </table>
+    <div class="counts" id="counts"></div>
+  </div>
+
+  <div class="footnote">
+    Live console: each claim runs a real LLM call (OpenAI or Anthropic, whichever you pick above), grounded only in the policy text retrieved for that claim. Retrieval is a keyword-overlap score against the 8 KB articles — no vector DB needed at this scale. "Expected outcome" in the summary is the author's own read of each claim's intended edge case for grading, not a field in the source data. This is a standalone file — open it in any browser, paste in your own key, and it runs with no other setup.
+  </div>
+</div>
+
+<script>
+const POLICIES = [
+  {
+    "id": "pol-001",
+    "title": "Standard Return Window",
+    "category": "returns",
+    "policy_text": "Unworn, unused items may be returned within 30 days of delivery in their original packaging with proof of purchase (order number or receipt). Refund is issued to the original payment method once the returned item is received and inspected.",
+    "confidence_tag": "auto_resolve"
+  },
+  {
+    "id": "pol-002",
+    "title": "Defective Item Warranty",
+    "category": "warranty",
+    "policy_text": "Manufacturing defects are covered for 1 year from the original purchase date. Claims under $75 in item value may be approved from the customer's description alone. Claims of $75 or more require at least one photo showing the defect before approval. Customer's choice of full refund or replacement.",
+    "confidence_tag": "auto_resolve"
+  },
+  {
+    "id": "pol-003",
+    "title": "Final Sale and Clearance Exclusions",
+    "category": "returns",
+    "policy_text": "Items marked 'Final Sale' at checkout, or purchased at a discount of 50% or more off original price, are not eligible for return or exchange under any circumstances. This applies even if the item is otherwise within the standard return window.",
+    "confidence_tag": "auto_resolve"
+  },
+  {
+    "id": "pol-004",
+    "title": "High-Value Item Review",
+    "category": "escalation_policy",
+    "policy_text": "Any return or warranty claim where the item's purchase value is $150 or more must be manually reviewed by the returns team lead before approval, regardless of how clearly it meets other return or warranty criteria.",
+    "confidence_tag": "escalate_required"
+  },
+  {
+    "id": "pol-005",
+    "title": "Damaged in Shipping",
+    "category": "warranty",
+    "policy_text": "Items damaged in transit are covered if reported within 48 hours of delivery, with at least one photo of the damage. A carrier claim is filed automatically and a replacement is shipped immediately at no cost. The damaged item does not need to be returned.",
+    "confidence_tag": "auto_resolve"
+  },
+  {
+    "id": "pol-006",
+    "title": "Wrong Item Shipped",
+    "category": "returns",
+    "policy_text": "If a customer receives a different item than what they ordered, a prepaid return label is issued for the incorrect item and the correct item is shipped immediately at no additional cost. There is no time window restriction for wrong-item claims.",
+    "confidence_tag": "auto_resolve"
+  },
+  {
+    "id": "pol-007",
+    "title": "Size or Fit Exchange",
+    "category": "returns",
+    "policy_text": "Footwear and apparel may be exchanged for a different size within 45 days of delivery if unworn with original tags still attached. Each order is eligible for one free size exchange; a shipping fee applies to additional exchanges on the same order.",
+    "confidence_tag": "auto_resolve"
+  },
+  {
+    "id": "pol-008",
+    "title": "Repeat Claim or Suspected Abuse",
+    "category": "escalation_policy",
+    "policy_text": "Customers who have submitted more than 3 return or warranty claims within a rolling 90-day period must be flagged for manual review before any further claim from that customer is auto-approved, regardless of the claim's individual merits.",
+    "confidence_tag": "escalate_required"
+  }
+];
+const CLAIMS_RAW = [
+  {
+    "id": "claim-01",
+    "customer_id": "CUST-2001",
+    "item_value_usd": 89,
+    "days_since_delivery": 10,
+    "prior_claims_90d": 0,
+    "claim_text": "I bought hiking boots 10 days ago and they don't fit right - still have the tags on. Can I exchange them for a bigger size?",
+    "expected_type": "straightforward - size exchange"
+  },
+  {
+    "id": "claim-02",
+    "customer_id": "CUST-2002",
+    "item_value_usd": 60,
+    "days_since_delivery": 1,
+    "prior_claims_90d": 0,
+    "claim_text": "My tent arrived with a broken pole. I noticed it the day I unboxed it. This looks defective, I'd like a replacement.",
+    "expected_type": "straightforward - shipping damage or defect, low value"
+  },
+  {
+    "id": "claim-03",
+    "customer_id": "CUST-2003",
+    "item_value_usd": 220,
+    "days_since_delivery": 21,
+    "prior_claims_90d": 0,
+    "claim_text": "I want to return this jacket. It's been about 3 weeks and I just don't like the color.",
+    "expected_type": "edge case - within window but high value, should escalate"
+  },
+  {
+    "id": "claim-04",
+    "customer_id": "CUST-2004",
+    "item_value_usd": 45,
+    "days_since_delivery": 12,
+    "prior_claims_90d": 0,
+    "claim_text": "This sleeping bag was marked as clearance when I bought it, but it's too small. Can I return it?",
+    "expected_type": "straightforward - final sale exclusion, should deny"
+  },
+  {
+    "id": "claim-05",
+    "customer_id": "CUST-2005",
+    "item_value_usd": 95,
+    "days_since_delivery": 5,
+    "prior_claims_90d": 0,
+    "claim_text": "You sent me the wrong backpack color - I ordered green and got blue.",
+    "expected_type": "straightforward - wrong item shipped"
+  },
+  {
+    "id": "claim-06",
+    "customer_id": "CUST-2006",
+    "item_value_usd": 25,
+    "days_since_delivery": 60,
+    "prior_claims_90d": 0,
+    "claim_text": "It's been about 60 days since I bought this water bottle - can I still return it?",
+    "expected_type": "edge case - outside standard window, ambiguous"
+  },
+  {
+    "id": "claim-07",
+    "customer_id": "CUST-2007",
+    "item_value_usd": 55,
+    "days_since_delivery": 8,
+    "prior_claims_90d": 4,
+    "claim_text": "This is my fourth warranty claim this quarter for different items I've bought.",
+    "expected_type": "edge case - repeat claim pattern, should escalate regardless of item"
+  },
+  {
+    "id": "claim-08",
+    "customer_id": "CUST-2008",
+    "item_value_usd": 40,
+    "days_since_delivery": 58,
+    "prior_claims_90d": 0,
+    "claim_text": "My backpack's zipper broke after about 2 months of light use. I think it's a manufacturing defect. It was $40.",
+    "expected_type": "straightforward - defect claim, low value, within warranty year"
+  }
+];
+const EXPECTED = {
+  "claim-01":"approve", "claim-02":"approve", "claim-03":"escalate", "claim-04":"deny",
+  "claim-05":"approve", "claim-06":"escalate", "claim-07":"escalate", "claim-08":"approve"
+};
+const POC_IDS = ["claim-01","claim-03","claim-06"];
+
+let claims = {};       // live state objects, keyed by id
+let selectedId = null;
+let currentMode = null;
+
+function freshState(raw){
+  return {
+    ...raw,
+    status: "pending",           // pending | approve | deny | escalate
+    guardrail_mode: null,        // 'poc' (off) | 'mvp' (on)
+    retrieved: [],
+    guardrail_pre: null,
+    llm: null,
+    guardrail_post: null,
+    final_decision: null,
+    action: null,
+    trace: []
+  };
+}
+function resetAll(){
+  claims = {}; CLAIMS_RAW.forEach(c => claims[c.id] = freshState(c));
+  selectedId = null; currentMode = null;
+  document.getElementById("summary").style.display = "none";
+  document.getElementById("detail").innerHTML = '<div class="empty">Run a pipeline, then select a claim to see its trace.</div>';
+  setButtons(false);
+  renderQueue();
+}
+
+// ---------- RAG retrieval: simple keyword-overlap scoring ----------
+const STOPWORDS = new Set(["the","and","this","that","for","are","with","from","was","were",
+  "has","have","had","not","but","you","your","our","its","been","just","about","dont","don",
+  "like","want","did","does","who","what","when","where","why","how","can","could","would",
+  "will","shall","should","also","any","all","being"]);
+function tokenize(s){
+  // length > 2 alone let high-frequency connective words ("the","and","this")
+  // dominate the overlap score and drown out the policy-relevant terms — caught
+  // this while testing the standalone script's retrieval on claim-03.
+  return (s.toLowerCase().match(/[a-z]+/g) || []).filter(w => w.length > 2 && !STOPWORDS.has(w));
+}
+function retrievePolicies(claim, topN=2){
+  const claimTokens = new Set(tokenize(claim.claim_text));
+  const scored = POLICIES.map(pol => {
+    const polTokens = tokenize(pol.title + " " + pol.category + " " + pol.policy_text);
+    let overlap = 0;
+    polTokens.forEach(t => { if (claimTokens.has(t)) overlap++; });
+    // light domain-term boosts so short claims still match the right article
+    const text = claim.claim_text.toLowerCase();
+    if (pol.id === "pol-003" && /clearance|final sale|discount/.test(text)) overlap += 4;
+    if (pol.id === "pol-006" && /wrong (item|color|backpack|size)|sent me/.test(text)) overlap += 4;
+    if (pol.id === "pol-007" && /exchange|fit|size|tags/.test(text)) overlap += 3;
+    if (pol.id === "pol-005" && /shipping|transit|broken (pole|zipper)|unbox/.test(text)) overlap += 3;
+    if (pol.id === "pol-002" && /defect|broken|manufactur/.test(text)) overlap += 3;
+    if (pol.id === "pol-001" && /return|refund|window|days/.test(text)) overlap += 1;
+    return { id: pol.id, title: pol.title, policy_text: pol.policy_text, confidence_tag: pol.confidence_tag, score: overlap };
+  }).sort((a,b) => b.score - a.score);
+  return scored.slice(0, topN).filter(p => p.score > 0);
+}
+
+// ---------- Hard guardrails: enforced in code, never in the prompt ----------
+function preGuardrail(claim){
+  const reasons = [];
+  if (claim.item_value_usd >= 150) reasons.push(`item value $${claim.item_value_usd} ≥ $150 (pol-004)`);
+  if (claim.prior_claims_90d > 3) reasons.push(`${claim.prior_claims_90d} prior claims in 90 days > 3 (pol-008)`);
+  return { triggered: reasons.length > 0, reasons };
+}
+function postGuardrail(claim, retrieved, llm){
+  const reasons = [];
+  if (retrieved.length === 0) reasons.push("no policy article matched with any confidence — nothing to ground a decision in");
+  if (llm && typeof llm.confidence === "number" && llm.confidence < 0.6) reasons.push(`model confidence ${llm.confidence.toFixed(2)} below 0.60 threshold`);
+  if (llm && llm.decision === "approve" && /defect|broken|manufactur/.test(claim.claim_text.toLowerCase()) && claim.item_value_usd >= 75) {
+    reasons.push("defect claim ≥ $75 requires photo evidence (pol-002) — cannot verify from free text alone");
+  }
+  return { triggered: reasons.length > 0, reasons };
+}
+
+function log(claim, label, text){
+  claim.trace.push({label, text});
+}
+
+// ---------- Model access panel ----------
+function updateKeyHint(){
+  const provider = document.getElementById("provider").value;
+  document.getElementById("key-hint").textContent = provider === "openai"
+    ? "Get a key at platform.openai.com → API keys. Needs gpt-5.5 access — if that errors, this page falls back automatically to gpt-4o."
+    : "Get a key at console.anthropic.com → API Keys.";
+}
+
+// ---------- The one LLM call ----------
+async function callDecisionAgent(claim, retrieved){
+  const policyBlock = retrieved.map(p => `[${p.id}] ${p.title}: ${p.policy_text}`).join("\n\n");
+  const system = `You are a returns/warranty claim decision agent for Northwind Outdoor Gear. Decide approve, deny, or escalate for the claim below, grounded ONLY in the policy text provided — never invent policy that isn't there. If the retrieved policy text doesn't clearly cover the situation, choose "escalate" rather than guessing. Respond with ONLY a JSON object, no other text, no markdown fences: {"decision":"approve|deny|escalate","confidence":0.0-1.0,"reason":"one or two sentences citing the specific policy id"}`;
+  const user = `RETRIEVED POLICY TEXT:\n${policyBlock || "(no policy article matched this claim)"}\n\nCLAIM:\nid: ${claim.id}\nitem_value_usd: ${claim.item_value_usd}\ndays_since_delivery: ${claim.days_since_delivery}\nprior_claims_90d: ${claim.prior_claims_90d}\ncustomer_text: "${claim.claim_text}"`;
+
+  const provider = document.getElementById("provider").value;
+  const apiKey = document.getElementById("api-key").value.trim();
+  if (!apiKey) throw new Error(`Enter your ${provider === "openai" ? "OpenAI" : "Anthropic"} API key above before running.`);
+
+  return provider === "openai"
+    ? callOpenAI(apiKey, system, user)
+    : callAnthropic(apiKey, system, user);
+}
+
+async function callOpenAI(apiKey, system, user, model="gpt-5.5"){
+  const resp = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {"Content-Type":"application/json", "Authorization": `Bearer ${apiKey}`},
+    body: JSON.stringify({
+      model,
+      max_completion_tokens: 300,
+      messages: [{role:"system", content: system}, {role:"user", content: user}],
+    })
+  });
+  const data = await resp.json();
+  if (data.error) {
+    // gpt-5.5 not available on this account yet — retry once on gpt-4o
+    if (model === "gpt-5.5") return callOpenAI(apiKey, system, user, "gpt-4o");
+    throw new Error(data.error.message || "OpenAI request failed");
+  }
+  return parseDecisionJSON(data.choices?.[0]?.message?.content || "");
+}
+
+async function callAnthropic(apiKey, system, user){
+  const resp = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type":"application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-direct-browser-access": "true",
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-5",
+      max_tokens: 300,
+      system,
+      messages: [{ role: "user", content: user }]
+    })
+  });
+  const data = await resp.json();
+  if (data.error) throw new Error(data.error.message || "Anthropic request failed");
+  const textBlock = (data.content || []).find(b => b.type === "text");
+  return parseDecisionJSON(textBlock?.text || "");
+}
+
+function parseDecisionJSON(raw){
+  try {
+    return JSON.parse(raw.trim().replace(/^```json|```$/g, "").trim());
+  } catch(e) {
+    return { decision: "escalate", confidence: 0, reason: `Could not parse model output — escalating rather than guessing. Raw: ${raw.slice(0,200)}` };
+  }
+}
+
+// ---------- Pipeline ----------
+async function processClaim(claim, guardrailsOn){
+  claim.status = "pending"; claim.trace = []; claim.guardrail_mode = guardrailsOn ? "mvp" : "poc";
+  renderQueue();
+
+  log(claim, "intake", `value $${claim.item_value_usd} · ${claim.days_since_delivery} days since delivery · ${claim.prior_claims_90d} prior claims/90d`);
+
+  if (guardrailsOn){
+    const pre = preGuardrail(claim);
+    claim.guardrail_pre = pre;
+    if (pre.triggered){
+      log(claim, "guardrail-pre", "TRIGGERED — " + pre.reasons.join("; ") + ". Skipping retrieval and LLM entirely.");
+      claim.final_decision = "escalate";
+      claim.action = "Routed to returns team lead — no LLM call needed, hard rule alone decides this.";
+      claim.status = "escalate";
+      renderQueue(); if (selectedId === claim.id) renderDetail(claim);
+      return;
+    } else {
+      log(claim, "guardrail-pre", "clear — value and claim-history checks both pass.");
+    }
+  }
+
+  const retrieved = retrievePolicies(claim);
+  claim.retrieved = retrieved;
+  log(claim, "retrieval", retrieved.length
+      ? `matched ${retrieved.map(p => `${p.id} (score ${p.score})`).join(", ")}`
+      : "no policy article scored above zero");
+  renderQueue(); if (selectedId === claim.id) renderDetail(claim);
+
+  let llm;
+  try {
+    llm = await callDecisionAgent(claim, retrieved);
+  } catch (err) {
+    log(claim, "decision agent", `ERROR — ${err.message}. Escalating rather than guessing.`);
+    claim.final_decision = "escalate"; claim.status = "escalate";
+    claim.action = "Routed to returns team lead — the decision call itself failed.";
+    log(claim, "action", claim.action);
+    renderQueue(); if (selectedId === claim.id) renderDetail(claim);
+    return;
+  }
+  claim.llm = llm;
+  log(claim, "decision agent", `model returned "${llm.decision}" (confidence ${(+llm.confidence).toFixed(2)}) — ${llm.reason}`);
+  renderQueue(); if (selectedId === claim.id) renderDetail(claim);
+
+  let final = llm.decision;
+  if (guardrailsOn){
+    const post = postGuardrail(claim, retrieved, llm);
+    claim.guardrail_post = post;
+    if (post.triggered){
+      log(claim, "guardrail-post", "OVERRIDE — " + post.reasons.join("; ") + ". Forcing escalate regardless of model output.");
+      final = "escalate";
+    } else {
+      log(claim, "guardrail-post", "clear — model's decision stands.");
+    }
+  }
+
+  claim.final_decision = final;
+  claim.status = final;
+  claim.action = final === "approve" ? "issue_refund_or_replacement() called."
+                : final === "deny" ? "Policy-cited denial message queued to customer."
+                : "Routed to returns team lead with full trace attached.";
+  log(claim, "action", claim.action);
+
+  renderQueue(); if (selectedId === claim.id) renderDetail(claim);
+}
+
+async function runMode(mode){
+  if (!document.getElementById("api-key").value.trim()){
+    alert("Enter your API key in the Model access panel above first.");
+    return;
+  }
+  setButtons(true);
+  currentMode = mode;
+  const ids = mode === "poc" ? POC_IDS : CLAIMS_RAW.map(c => c.id);
+  ids.forEach(id => { claims[id] = freshState(CLAIMS_RAW.find(c => c.id === id)); });
+  renderQueue();
+  document.getElementById("mode-note").textContent = mode === "poc"
+    ? "POC running: retrieval + one LLM call, no guardrail code at all. Watch claim-03 — a $220 item within the window — the model alone decides its fate."
+    : "MVP running: same retrieval + LLM call, now wrapped by the two hard-coded guardrails. claim-03 and claim-07 should escalate regardless of what the model thinks.";
+  for (const id of ids){
+    await processClaim(claims[id], mode === "mvp");
+  }
+  setButtons(false);
+  if (mode === "mvp") renderSummary();
+}
+
+function setButtons(disabled){
+  document.getElementById("btn-poc").disabled = disabled;
+  document.getElementById("btn-mvp").disabled = disabled;
+}
+
+// ---------- Rendering ----------
+function statusLabel(s){
+  return {pending:"pending", approve:"auto-approved", deny:"auto-denied", escalate:"escalated"}[s] || s;
+}
+function renderQueue(){
+  const ids = currentMode === "poc" ? POC_IDS : Object.keys(claims);
+  const el = document.getElementById("queue");
+  if (!ids.length){ el.innerHTML = ""; return; }
+  el.innerHTML = ids.map(id => {
+    const c = claims[id];
+    const borderClass = c.status === "pending" ? "" : `border-${c.status}`;
+    return `<div class="claim-row ${borderClass} ${id===selectedId?'selected':''}" onclick="selectClaim('${id}')">
+      <div class="id">${id} · $${c.item_value_usd} · ${c.days_since_delivery}d</div>
+      <div class="desc">${escapeHtml(c.claim_text).slice(0,90)}${c.claim_text.length>90?"…":""}</div>
+      <span class="status ${c.status}">${statusLabel(c.status)}</span>
+    </div>`;
+  }).join("");
+}
+function selectClaim(id){ selectedId = id; renderQueue(); renderDetail(claims[id]); }
+
+function renderDetail(c){
+  const el = document.getElementById("detail");
+  if (!c.trace.length){ el.innerHTML = '<div class="empty">Processing…</div>'; return; }
+  let html = `<div class="detail">
+    <h2>${c.id}</h2>
+    <div class="meta">$${c.item_value_usd} · ${c.days_since_delivery} days since delivery · ${c.prior_claims_90d} prior claims/90d · customer ${c.customer_id}</div>
+    <div class="claim-text">"${escapeHtml(c.claim_text)}"</div>`;
+  c.trace.forEach(t => {
+    html += `<div class="trace-step"><div class="label">${t.label}</div><div class="body">${escapeHtml(t.text)}</div></div>`;
+  });
+  if (c.final_decision){
+    html += `<div class="decision-banner ${c.final_decision}">${statusLabel(c.final_decision).toUpperCase()}
+      ${c.llm ? `<span class="conf">model confidence ${(+c.llm.confidence).toFixed(2)}</span>` : `<span class="conf">guardrail-only, no LLM call</span>`}
+    </div>`;
+  }
+  html += `</div>`;
+  el.innerHTML = html;
+}
+
+function renderSummary(){
+  const body = document.getElementById("summary-body");
+  let matchCount = 0, approveN=0, denyN=0, escN=0;
+  body.innerHTML = CLAIMS_RAW.map(raw => {
+    const c = claims[raw.id];
+    const expected = EXPECTED[raw.id];
+    const match = c.final_decision === expected;
+    if (match) matchCount++;
+    if (c.final_decision === "approve") approveN++;
+    if (c.final_decision === "deny") denyN++;
+    if (c.final_decision === "escalate") escN++;
+    const guardrailNote = c.guardrail_pre?.triggered ? "pre-check"
+      : c.guardrail_post?.triggered ? "post-check" : "—";
+    return `<tr>
+      <td class="mono">${c.id}</td>
+      <td class="mono">$${c.item_value_usd}</td>
+      <td class="mono">${c.days_since_delivery}</td>
+      <td class="mono">${c.prior_claims_90d}</td>
+      <td class="mono">${guardrailNote}</td>
+      <td>${statusLabel(c.final_decision)}</td>
+      <td>${statusLabel(expected)}</td>
+      <td>${match ? "✓" : "✕ review"}</td>
+    </tr>`;
+  }).join("");
+  document.getElementById("counts").innerHTML =
+    `<div><b>${approveN + denyN}</b> auto-resolved</div><div><b>${escN}</b> escalated</div><div><b>${matchCount}/8</b> matched expected outcome</div>`;
+  document.getElementById("summary").style.display = "block";
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+}
+
+resetAll();
+updateKeyHint();
+</script>
+</body>
+</html>

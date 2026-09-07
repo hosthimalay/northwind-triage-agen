@@ -1,0 +1,74 @@
+[
+  {
+    "id": "claim-01",
+    "customer_id": "CUST-2001",
+    "item_value_usd": 89,
+    "days_since_delivery": 10,
+    "prior_claims_90d": 0,
+    "claim_text": "I bought hiking boots 10 days ago and they don't fit right - still have the tags on. Can I exchange them for a bigger size?",
+    "expected_type": "straightforward - size exchange"
+  },
+  {
+    "id": "claim-02",
+    "customer_id": "CUST-2002",
+    "item_value_usd": 60,
+    "days_since_delivery": 1,
+    "prior_claims_90d": 0,
+    "claim_text": "My tent arrived with a broken pole. I noticed it the day I unboxed it. This looks defective, I'd like a replacement.",
+    "expected_type": "straightforward - shipping damage or defect, low value"
+  },
+  {
+    "id": "claim-03",
+    "customer_id": "CUST-2003",
+    "item_value_usd": 220,
+    "days_since_delivery": 21,
+    "prior_claims_90d": 0,
+    "claim_text": "I want to return this jacket. It's been about 3 weeks and I just don't like the color.",
+    "expected_type": "edge case - within window but high value, should escalate"
+  },
+  {
+    "id": "claim-04",
+    "customer_id": "CUST-2004",
+    "item_value_usd": 45,
+    "days_since_delivery": 12,
+    "prior_claims_90d": 0,
+    "claim_text": "This sleeping bag was marked as clearance when I bought it, but it's too small. Can I return it?",
+    "expected_type": "straightforward - final sale exclusion, should deny"
+  },
+  {
+    "id": "claim-05",
+    "customer_id": "CUST-2005",
+    "item_value_usd": 95,
+    "days_since_delivery": 5,
+    "prior_claims_90d": 0,
+    "claim_text": "You sent me the wrong backpack color - I ordered green and got blue.",
+    "expected_type": "straightforward - wrong item shipped"
+  },
+  {
+    "id": "claim-06",
+    "customer_id": "CUST-2006",
+    "item_value_usd": 25,
+    "days_since_delivery": 60,
+    "prior_claims_90d": 0,
+    "claim_text": "It's been about 60 days since I bought this water bottle - can I still return it?",
+    "expected_type": "edge case - outside standard window, ambiguous"
+  },
+  {
+    "id": "claim-07",
+    "customer_id": "CUST-2007",
+    "item_value_usd": 55,
+    "days_since_delivery": 8,
+    "prior_claims_90d": 4,
+    "claim_text": "This is my fourth warranty claim this quarter for different items I've bought.",
+    "expected_type": "edge case - repeat claim pattern, should escalate regardless of item"
+  },
+  {
+    "id": "claim-08",
+    "customer_id": "CUST-2008",
+    "item_value_usd": 40,
+    "days_since_delivery": 58,
+    "prior_claims_90d": 0,
+    "claim_text": "My backpack's zipper broke after about 2 months of light use. I think it's a manufacturing defect. It was $40.",
+    "expected_type": "straightforward - defect claim, low value, within warranty year"
+  }
+]

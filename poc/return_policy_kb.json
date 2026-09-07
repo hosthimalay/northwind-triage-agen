@@ -1,0 +1,58 @@
+[
+  {
+    "id": "pol-001",
+    "title": "Standard Return Window",
+    "category": "returns",
+    "policy_text": "Unworn, unused items may be returned within 30 days of delivery in their original packaging with proof of purchase (order number or receipt). Refund is issued to the original payment method once the returned item is received and inspected.",
+    "confidence_tag": "auto_resolve"
+  },
+  {
+    "id": "pol-002",
+    "title": "Defective Item Warranty",
+    "category": "warranty",
+    "policy_text": "Manufacturing defects are covered for 1 year from the original purchase date. Claims under $75 in item value may be approved from the customer's description alone. Claims of $75 or more require at least one photo showing the defect before approval. Customer's choice of full refund or replacement.",
+    "confidence_tag": "auto_resolve"
+  },
+  {
+    "id": "pol-003",
+    "title": "Final Sale and Clearance Exclusions",
+    "category": "returns",
+    "policy_text": "Items marked 'Final Sale' at checkout, or purchased at a discount of 50% or more off original price, are not eligible for return or exchange under any circumstances. This applies even if the item is otherwise within the standard return window.",
+    "confidence_tag": "auto_resolve"
+  },
+  {
+    "id": "pol-004",
+    "title": "High-Value Item Review",
+    "category": "escalation_policy",
+    "policy_text": "Any return or warranty claim where the item's purchase value is $150 or more must be manually reviewed by the returns team lead before approval, regardless of how clearly it meets other return or warranty criteria.",
+    "confidence_tag": "escalate_required"
+  },
+  {
+    "id": "pol-005",
+    "title": "Damaged in Shipping",
+    "category": "warranty",
+    "policy_text": "Items damaged in transit are covered if reported within 48 hours of delivery, with at least one photo of the damage. A carrier claim is filed automatically and a replacement is shipped immediately at no cost. The damaged item does not need to be returned.",
+    "confidence_tag": "auto_resolve"
+  },
+  {
+    "id": "pol-006",
+    "title": "Wrong Item Shipped",
+    "category": "returns",
+    "policy_text": "If a customer receives a different item than what they ordered, a prepaid return label is issued for the incorrect item and the correct item is shipped immediately at no additional cost. There is no time window restriction for wrong-item claims.",
+    "confidence_tag": "auto_resolve"
+  },
+  {
+    "id": "pol-007",
+    "title": "Size or Fit Exchange",
+    "category": "returns",
+    "policy_text": "Footwear and apparel may be exchanged for a different size within 45 days of delivery if unworn with original tags still attached. Each order is eligible for one free size exchange; a shipping fee applies to additional exchanges on the same order.",
+    "confidence_tag": "auto_resolve"
+  },
+  {
+    "id": "pol-008",
+    "title": "Repeat Claim or Suspected Abuse",
+    "category": "escalation_policy",
+    "policy_text": "Customers who have submitted more than 3 return or warranty claims within a rolling 90-day period must be flagged for manual review before any further claim from that customer is auto-approved, regardless of the claim's individual merits.",
+    "confidence_tag": "escalate_required"
+  }
+]
