@@ -53,6 +53,9 @@ Claim → guardrail pre-check (code) → retrieval (keyword match vs. policy KB)
 Full diagram: [`docs/diagrams/architecture_diagram.png`](./docs/diagrams/architecture_diagram.png)
 
 ## Proof it actually runs
+<img width="1563" height="1202" alt="{555FA699-9682-4D3E-A4BF-BB5599211AB0}" src="https://github.com/user-attachments/assets/96d655e3-2a45-44ac-8b15-687957951243" />
+<img width="1521" height="1222" alt="{7A6C37D5-BC27-47EE-A671-6CE42B42EDF4}" src="https://github.com/user-attachments/assets/f701b007-ce35-4675-a63d-5762db58c7b7" />
+
 
 ```
 $ python poc_triage.py --all
