@@ -1,0 +1,47 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: CloudServe FDE capstone AWS optional demonstration, deploy to ap-northeast-1
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 1024
+    Runtime: python3.11
+Resources:
+  CloudServeApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      Auth:
+        DefaultAuthorizer: AWS_IAM
+  AuditTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: decision_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: decision_id
+          KeyType: HASH
+  TicketFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../
+      Handler: cloudserve.aws_handler.handler
+      Environment:
+        Variables:
+          AUDIT_TABLE: !Ref AuditTable
+          USE_OPENAI: '0'
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - DynamoDBWritePolicy:
+            TableName: !Ref AuditTable
+      Events:
+        Health:
+          Type: HttpApi
+          Properties: {ApiId: !Ref CloudServeApi, Path: /health, Method: GET}
+        Ticket:
+          Type: HttpApi
+          Properties: {ApiId: !Ref CloudServeApi, Path: /tickets, Method: POST}
+Outputs:
+  API:
+    Value: !Sub 'https://${CloudServeApi}.execute-api.${AWS::Region}.amazonaws.com'
