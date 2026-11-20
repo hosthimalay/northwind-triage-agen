@@ -1,6 +1,6 @@
 # CloudServe Solutions — FDE Capstone
 
-**Status:** locally testable baseline; AWS deployment and live OpenAI calls are NOT verified. Built as a separate extension of the Northwind triage case study.
+**Status (2026-11-16):** improved offline evaluation and AWS container-image deployment files prepared; AWS deployment and live OpenAI calls remain NOT verified. Built as a separate extension of the Northwind triage case study.
 
 ## What is implemented
 
@@ -53,11 +53,11 @@ On PowerShell, use `$env:OPENAI_API_KEY = 'YOUR_KEY_HERE'`. This incurs API cost
 ## FDE design choices and honest limits
 
 - The 29 curated articles are the only answer authority; unreviewed personal snippets are excluded.
-- Preserving complete resolution sections reduces chunk-boundary ambiguity. Full-article ranking uses lexical TF-IDF: a **lightweight baseline**, not true semantic neural embeddings. It must be compared against neural embeddings in a future experiment.
-- Logistic-regression probability is **not guaranteed calibrated**. Improve calibration using development-only cross-validation before making confidence based automation claims.
+- Preserving complete resolution sections reduces chunk-boundary ambiguity. Retrieval combines word and character TF-IDF and re-ranks articles using a development-only intent-conditioned document prior. It is **lexical retrieval, not true neural semantic embeddings**. It must be compared against neural embeddings in a future experiment.
+- Intent classification now uses character n-gram logistic regression (development grouped holdout 4-seed mean accuracy approximately 93.7%, versus 87.3% for the original word model). Logistic-regression probabilities are **not calibrated**. Improve calibration using development-only cross-validation before making confidence based automation claims.
 - Automated answer rate is **not observed first-contact resolution**. Customer outcomes must be measured after deployment. Response latency in this harness is processing time, not customer-experienced wait.
 - The four hard-block intents are `security_incident`, `compliance_request`, `feature_request`, `unclear_request`; keywords add an independent incident check.
-- The AWS SAM template is an **optional demo sketch**, not an implemented production integration. Its Lambda handler writes audit decisions to DynamoDB and fails closed if persistence is unavailable, but this AWS deployment has not yet been tested. Keep the local evaluator as the authoritative grading implementation.
+- The AWS SAM template is an **optional demo sketch**, not an implemented production integration. Its Lambda container-image handler writes audit decisions to DynamoDB and fails closed if persistence is unavailable. This deployment has not yet been tested against a live AWS account. Keep the local evaluator as the authoritative grading implementation.
 - Real Jira and Confluence integration, vector servers, React and Grafana are intentionally out of scope. A production architecture could add integrations behind the existing ingestion/retrieval interfaces after evaluation.
 
 ## Northwind reuse
@@ -83,3 +83,85 @@ sam deploy --guided --region ap-northeast-1
 ```
 
 The API uses IAM authentication, so calling it requires an authenticated Signature V4 client. Verify the deployed function and DynamoDB audit table in the AWS Console before claiming the cloud test passed. No AWS resource has been created in this project session.
+
+
+## 2026-11-16 offline engineering revision
+
+We improved the intent representation and retrieval after seeing that two
+phrasings of the same rate-limit question triggered different decisions.
+The development-only evidence and four-split experiment are in
+[`docs/ENGINEERING_EXPERIMENT.md`](docs/ENGINEERING_EXPERIMENT.md).
+
+A fresh unattended local **validation** run after those design decisions:
+
+| Metric | Initial offline baseline | Revised offline version |
+|---|---:|---:|
+| Tickets processed | 80 | 80 |
+| Automatic drafts | 56 | 65 |
+| Escalations | 24 | 15 |
+| Retrieved relevant doc (top 3) | 83.0% | 92.5% |
+| Correct citations among evaluated drafts | 95.1% | 93.8% |
+| Prohibited tickets auto-answered | 0/14 | 0/14 |
+
+**Important trade-off:** citation accuracy is below the aspirational 95%
+target. The 65 automatic drafts are **not** demonstrated first-contact
+resolutions. The validation texts have substantial development overlap
+(62/80 bodies), so do not cite validation intent accuracy as generalisation.
+Urgency remains advisory only.
+
+### Simple local API demonstration
+
+`POST /tickets` accepts a JSON body such as:
+
+```json
+{
+  "ticket_id": "DEMO-003",
+  "channel": "chat",
+  "subject": "HTTP 429 API rate limit exceeded",
+  "body": "Our API calls return 429 Too Many Requests. How can we use exponential backoff?"
+}
+```
+
+Look at `route`, `reason`, `citations`, `guardrails` and `generator`.
+`generator: deterministic_extract` means no OpenAI call occurred.
+
+### Optional OpenAI locally (never commit secrets)
+
+Install `requirements-openai.txt`, set `OPENAI_API_KEY` in your
+PowerShell **session** and set `USE_OPENAI=1` before restarting the API.
+An actual successful call should report
+`generator: openai_evidence_selection`. This selects exact source excerpts;
+it does **not** generate a free-form answer. Credentials are excluded
+from repositories. Known emails, API-key patterns and card-like strings
+are redacted from prompts, but this is not a comprehensive PII solution.
+
+### AWS Tokyo demonstration (still pending authorised deployment)
+
+A Docker-capable machine with SAM CLI and permission to deploy
+CloudFormation, ECR, IAM, Lambda, API Gateway, DynamoDB and CloudWatch is
+required. The SAM template uses a container image because scientific
+Python dependencies can be large; it does not publish the evaluation
+labels in the runtime image.
+
+1. Create an AWS Secrets Manager secret in `ap-northeast-1` containing
+   the API key (plaintext or `{"OPENAI_API_KEY":"..."}`). Record its
+   **ARN**, not its plaintext value. Reuse an existing permitted secret
+   if one is already managed in your AWS account.
+2. From `cloudserve-capstone/`:
+
+   ```bash
+   sam validate --template-file infra/template.yaml
+   sam build --template-file infra/template.yaml --use-container
+   sam deploy --guided --region ap-northeast-1 \
+      --parameter-overrides UseOpenAI=1 OpenAISecretArn=<YOUR_SECRET_ARN>
+   ```
+
+3. Authenticate API calls with AWS Signature V4 (the HTTP API is
+   IAM-protected). Verify `/health`, a normal ticket, a security
+   escalation, the DynamoDB audit table and CloudWatch logs.
+4. Never claim AWS deployment or live OpenAI functionality until a real
+   response and cloud resource identifiers have been verified.
+
+For an offline AWS adapter test without AWS credentials, run the
+`test_lambda_handler_local_adapter_with_mocked_store` and
+`test_lambda_fails_closed_if_audit_write_fails` tests.

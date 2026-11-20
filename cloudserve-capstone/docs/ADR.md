@@ -21,3 +21,26 @@
 **ADR-010 Measurement** — Separate automation rate from actual first-contact resolution, which requires post-deployment customer outcomes. Group text-identical tickets in development holdout: 62/80 validation bodies overlap dev; 100% validation intent accuracy is not a credible estimate of fresh-language generalisation.
 
 **Reuse attribution:** Northwind Returns & Warranty Triage Agent provided the design pattern for pre/post Python guardrails and transparent evidence traces. The CloudServe code was newly generated with AI assistance. Student should review, test and declare tools used before assessment submission.
+
+
+## ADR-011: Development-only representation and retrieval revision (2026-11-16)
+
+The first Swagger demo exposed a threshold-sensitive rate-limit classification.
+Before changing the model we compared four **grouped development** holdout
+splits: character n-grams improved mean intent accuracy from ~87.3% to
+~93.7%. A hybrid word/character corpus and small intent-conditioned
+article-frequency prior improved top-1 document accuracy in three grouped
+development splits; the prior never overrides raw relevance filtering.
+The classifier threshold moved from .10 to .15 based on development-only
+selective prediction. After revision, validation top-3 document hit rose
+from 83.0% to 92.5%, but citation accuracy decreased from 95.1% to
+93.8%. This is **not unequivocal improvement**; precision needs more work.
+No retriever training uses the supplied validation reference labels.
+
+## ADR-012: Lambda container and secret handling
+
+Package with AWS SAM as an OCI container image to make scientific Python
+package-size constraints explicit; use Secrets Manager GetSecretValue
+through a narrowly scoped role for the optional live OpenAI path.
+The REST endpoint requires AWS_IAM authentication and logs only hashed
+ticket input plus decision metadata. The AWS deployment is NOT confirmed.

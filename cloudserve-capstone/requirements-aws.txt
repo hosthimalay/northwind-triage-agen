@@ -1,0 +1,5 @@
+# Minimal AWS Lambda runtime image - omit pytest, uvicorn and FastAPI.
+numpy==2.3.5
+scikit-learn==1.8.0
+openai>=1.30,<3
+boto3>=1.35,<2

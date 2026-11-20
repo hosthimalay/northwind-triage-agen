@@ -1,0 +1,35 @@
+{
+  "evaluation": "grouped development holdout; not final validation",
+  "per_split": [
+    {
+      "seed": 42,
+      "train_size": 392,
+      "holdout_size": 108,
+      "word_accuracy": 0.8704,
+      "character_accuracy": 0.9444
+    },
+    {
+      "seed": 17,
+      "train_size": 404,
+      "holdout_size": 96,
+      "word_accuracy": 0.9167,
+      "character_accuracy": 0.9792
+    },
+    {
+      "seed": 77,
+      "train_size": 405,
+      "holdout_size": 95,
+      "word_accuracy": 0.8947,
+      "character_accuracy": 0.9368
+    },
+    {
+      "seed": 110,
+      "train_size": 368,
+      "holdout_size": 132,
+      "word_accuracy": 0.8106,
+      "character_accuracy": 0.8864
+    }
+  ],
+  "mean_word_accuracy": 0.8731,
+  "mean_character_accuracy": 0.9367
+}

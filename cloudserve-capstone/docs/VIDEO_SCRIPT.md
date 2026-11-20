@@ -14,7 +14,7 @@
 
 11:00–14:00 — Run `python -m cloudserve.evaluation --input data/validation_tickets.json --output evaluation/demo` uninterrupted; open results JSONL and SQLite DB, reconcile exactly 80 tickets, display metrics. Run `python -m pytest tests/ -q`.
 
-14:00–17:00 — Explain 56 auto drafts, 24 escalations, 83.0% retrieval hit, 95.1% eligible citation accuracy, zero unsafe auto sends. Crucially, 70% is NOT measured FCR. Run `python -m evaluation.grouped_audit` and explain 62/80 body overlap and 48% urgency grouped holdout.
+14:00–17:00 — Explain the latest offline run: 65 automatic drafts, 15 escalations, 92.5% retrieval hit, 93.8% evaluated citation accuracy, zero unsafe auto sends. Contrast against the earlier 56/24, 83.0% retrieval, 95.1% citations and explain that the citation target is not yet met. Crucially, 70% is NOT measured FCR. Run `python -m evaluation.grouped_audit` and explain 62/80 body overlap and 48% urgency grouped holdout.
 
 17:00–18:00 — Governance: privacy, citations, no model override of deterministic rules, safe outage path and fairness group gaps.
 
@@ -26,3 +26,6 @@
 - Live demo must show normal answer, escalation, guardrail blocked and full unattended batch.
 - Use only real results. Record actual API costs/times if OpenAI enabled.
 - Upload the actual video or add approved link under `01_Video` before submission.
+
+
+Demonstrate the new grouped-holdout experiment with `python -m evaluation.classifier_comparison`. Describe that the model is character TF-IDF, not a trained deep network, and the retrieval is lexical rather than neural embeddings. Do not describe a mocked OpenAI unit test as a live model request.

@@ -1,0 +1,300 @@
+{
+  "run_id": "d98eaf4d3ae442839457e645d698f956",
+  "volume": {
+    "tickets_processed": 80,
+    "answered_automatically": 65,
+    "escalated": 15,
+    "blocked_by_guardrails": 14
+  },
+  "business": {
+    "first_contact_resolution_proxy": 0.8125,
+    "first_contact_resolution_note": "Proxy only: automated response is NOT verified issue resolution. Actual FCR requires post-response customer outcomes; this is an upper bound.",
+    "historical_first_contact_resolution": 0.4625,
+    "mean_response_time_ms": 6.156,
+    "median_response_time_ms": 5.283,
+    "response_time_note": "Processing latency proxy, not measured end-to-end customer first response.",
+    "historical_mean_resolution_minutes": 441.48,
+    "escalation_rate": 0.1875
+  },
+  "technical": {
+    "intent_classification": {
+      "available": true,
+      "macro_precision": 1.0,
+      "macro_recall": 1.0,
+      "per_class": {
+        "account_access": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 4
+        },
+        "api_key_issue": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 6
+        },
+        "api_usage_question": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 4
+        },
+        "authentication_failure": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 3
+        },
+        "billing_query": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 10
+        },
+        "compliance_request": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 1
+        },
+        "configuration_help": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 3
+        },
+        "data_export": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 1
+        },
+        "data_residency": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 6
+        },
+        "database_issue": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 1
+        },
+        "deployment_failure": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 5
+        },
+        "feature_request": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 3
+        },
+        "integration_help": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 3
+        },
+        "onboarding": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 4
+        },
+        "performance_degradation": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 3
+        },
+        "quota_or_overage": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 2
+        },
+        "rate_limit": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 1
+        },
+        "rollback_request": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 6
+        },
+        "security_incident": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 4
+        },
+        "sso_configuration": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 1
+        },
+        "unclear_request": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 6
+        },
+        "webhook_issue": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 3
+        }
+      }
+    },
+    "urgency_classification": {
+      "available": true,
+      "macro_precision": 0.4391,
+      "macro_recall": 0.4429,
+      "per_class": {
+        "high": {
+          "precision": 0.4762,
+          "recall": 0.4,
+          "f1": 0.4348,
+          "support": 25
+        },
+        "low": {
+          "precision": 0.3571,
+          "recall": 0.5,
+          "f1": 0.4167,
+          "support": 20
+        },
+        "medium": {
+          "precision": 0.4839,
+          "recall": 0.4286,
+          "f1": 0.4545,
+          "support": 35
+        }
+      }
+    },
+    "retrieval_hit_rate": 0.9245,
+    "retrieval_labeled_tickets": 53,
+    "citation_accuracy": 0.9375,
+    "citation_eligible_answered_tickets": 48,
+    "latency_median_ms": 5.283,
+    "latency_p95_ms": 9.963
+  },
+  "governance": {
+    "decisions_logged": 80,
+    "logging_reconciled": true,
+    "guardrail_activations_by_type": {
+      "blocked_intent:unclear_request": 6,
+      "blocked_intent:compliance_request": 1,
+      "blocked_intent:feature_request": 3,
+      "compromise": 2,
+      "blocked_intent:security_incident": 2
+    },
+    "private_data_detections": 0,
+    "unsafe_automatic_responses": 0,
+    "unsafe_labeled_tickets": 14,
+    "fairness_slices": {
+      "customer_tier": {
+        "business": {
+          "total": 30,
+          "auto": 28,
+          "unsafe_auto": 0,
+          "citation_ok": 19,
+          "citation_total": 21,
+          "auto_rate": 0.9333,
+          "citation_accuracy": 0.9048
+        },
+        "enterprise": {
+          "total": 8,
+          "auto": 7,
+          "unsafe_auto": 0,
+          "citation_ok": 6,
+          "citation_total": 6,
+          "auto_rate": 0.875,
+          "citation_accuracy": 1.0
+        },
+        "standard": {
+          "total": 42,
+          "auto": 30,
+          "unsafe_auto": 0,
+          "citation_ok": 20,
+          "citation_total": 21,
+          "auto_rate": 0.7143,
+          "citation_accuracy": 0.9524
+        }
+      },
+      "customer_region": {
+        "asia_pacific": {
+          "total": 21,
+          "auto": 19,
+          "unsafe_auto": 0,
+          "citation_ok": 16,
+          "citation_total": 16,
+          "auto_rate": 0.9048,
+          "citation_accuracy": 1.0
+        },
+        "europe": {
+          "total": 25,
+          "auto": 21,
+          "unsafe_auto": 0,
+          "citation_ok": 14,
+          "citation_total": 16,
+          "auto_rate": 0.84,
+          "citation_accuracy": 0.875
+        },
+        "latin_america": {
+          "total": 7,
+          "auto": 4,
+          "unsafe_auto": 0,
+          "citation_ok": 3,
+          "citation_total": 3,
+          "auto_rate": 0.5714,
+          "citation_accuracy": 1.0
+        },
+        "north_america": {
+          "total": 27,
+          "auto": 21,
+          "unsafe_auto": 0,
+          "citation_ok": 12,
+          "citation_total": 13,
+          "auto_rate": 0.7778,
+          "citation_accuracy": 0.9231
+        }
+      },
+      "language_fluency": {
+        "fluent": {
+          "total": 61,
+          "auto": 49,
+          "unsafe_auto": 0,
+          "citation_ok": 37,
+          "citation_total": 40,
+          "auto_rate": 0.8033,
+          "citation_accuracy": 0.925
+        },
+        "non_fluent": {
+          "total": 19,
+          "auto": 16,
+          "unsafe_auto": 0,
+          "citation_ok": 8,
+          "citation_total": 8,
+          "auto_rate": 0.8421,
+          "citation_accuracy": 1.0
+        }
+      }
+    }
+  },
+  "limitations": [
+    "Evaluation labels are used for metrics only, never for ticket routing.",
+    "Automated-response rate is not actual first-contact resolution.",
+    "Confidence scores are logistic-regression probabilities; calibration requires further study.",
+    "One optional OpenAI call per answer when USE_OPENAI=1; default demonstration uses extractive fallback."
+  ]
+}
