@@ -1,0 +1,69 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: CloudServe FDE AWS demonstration, IAM-protected HTTP API (Tokyo)
+Parameters:
+  UseOpenAI:
+    Type: String
+    Default: '0'
+    AllowedValues: ['0', '1']
+  OpenAISecretArn:
+    Type: String
+    Default: ''
+    Description: Optional Secrets Manager ARN, required for OpenAI mode
+Conditions:
+  HasSecret: !Not [!Equals [!Ref OpenAISecretArn, '']]
+Resources:
+  CloudServeApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      Auth:
+        EnableIamAuthorizer: true
+        DefaultAuthorizer: AWS_IAM
+  AuditTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: decision_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: decision_id
+          KeyType: HASH
+  TicketFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      Dockerfile: infra/Dockerfile
+      DockerContext: ../
+      DockerTag: cloudserve-v2
+    Properties:
+      PackageType: Image
+      Timeout: 45
+      MemorySize: 1536
+      Environment:
+        Variables:
+          AUDIT_TABLE: !Ref AuditTable
+          USE_OPENAI: !Ref UseOpenAI
+          OPENAI_SECRET_ARN: !Ref OpenAISecretArn
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - DynamoDBWritePolicy:
+            TableName: !Ref AuditTable
+        - !If
+          - HasSecret
+          - Statement:
+              - Effect: Allow
+                Action: secretsmanager:GetSecretValue
+                Resource: !Ref OpenAISecretArn
+          - !Ref AWS::NoValue
+      Events:
+        Health:
+          Type: HttpApi
+          Properties: {ApiId: !Ref CloudServeApi, Path: /health, Method: GET}
+        Ticket:
+          Type: HttpApi
+          Properties: {ApiId: !Ref CloudServeApi, Path: /tickets, Method: POST}
+Outputs:
+  API:
+    Value: !Sub 'https://${CloudServeApi}.execute-api.${AWS::Region}.amazonaws.com'
+  AuditTableName:
+    Value: !Ref AuditTable

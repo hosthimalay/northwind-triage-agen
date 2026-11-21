@@ -1,0 +1,9 @@
+.env
+.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+storage/
+evaluation/results/
+*.sqlite3
+.aws-sam/

@@ -1,0 +1,30 @@
+name: CloudServe capstone tests
+on:
+  push:
+    paths:
+      - 'cloudserve-capstone/**'
+  pull_request:
+    paths:
+      - 'cloudserve-capstone/**'
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: cloudserve-capstone
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install
+        run: python -m pip install -r requirements.txt
+      - name: Tests
+        run: python -m pytest tests/ -q
+      - name: Evaluation (if official datasets included)
+        run: |
+          if [ -f data/development_tickets.json ] && [ -f data/validation_tickets.json ] && [ -f data/documentation.json ]; then
+            python -m cloudserve.evaluation --input data/validation_tickets.json --output evaluation/results
+          else
+            echo 'Official datasets absent: evaluation skipped, not marked passed.'
+          fi

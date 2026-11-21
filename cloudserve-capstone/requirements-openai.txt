@@ -1,0 +1,3 @@
+-r requirements.txt
+# Optional evidence selector. Install only if testing live OpenAI.
+openai>=1.30,<3
