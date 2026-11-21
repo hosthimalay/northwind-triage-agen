@@ -4,6 +4,7 @@ import sqlite3
 from cloudserve.core import CloudServeEngine, DecisionStore, KnowledgeBase, validate_answer, normalise_ticket, DATA
 from cloudserve.evaluation import run_evaluation
 import pytest
+from fastapi.testclient import TestClient
 
 
 @pytest.fixture(scope='module')
@@ -54,6 +55,43 @@ def test_a7_security_guardrail_blocks(engine):
     assert r['route'] == 'escalate'
     assert 'compromise' in r['guardrails']
     assert r['answer'] is None
+
+
+def test_a7_operator_pause_and_monitoring(tmp_path, engine, monkeypatch):
+    from cloudserve import api
+
+    monkeypatch.setattr(api, 'engine', lambda: engine)
+    monkeypatch.setattr(api, 'AUDIT_PATH', tmp_path / 'api.sqlite3')
+    pause_file = tmp_path / 'pause-auto-drafts'
+    monkeypatch.setattr(api, 'PAUSE_FILE', pause_file)
+    ticket = {'ticket_id': 'PAUSE', 'channel': 'chat',
+              'subject': 'HTTP 429 Too Many Requests API rate limit exceeded',
+              'body': 'Requests exceed rate limit, please explain quota and backoff.'}
+
+    with TestClient(api.app) as client:
+        pause_file.touch()
+        blocked = client.post('/tickets', json=ticket).json()
+        assert blocked['route'] == 'escalate'
+        assert blocked['answer'] is None
+        assert blocked['guardrails'] == ['automation_paused']
+        pause_file.unlink()
+        assert client.post('/tickets', json=ticket).json()['route'] == 'auto_respond'
+        metrics = client.get('/metrics/')
+        assert metrics.status_code == 200
+        for sample in ('cloudserve_tickets_total{channel="chat",outcome="escalate"}',
+                       'cloudserve_guardrail_activations_total{guardrail="automation_paused"}',
+                       'cloudserve_response_seconds_bucket', 'cloudserve_confidence_bucket'):
+            assert sample in metrics.text
+        assert 'PAUSE' not in metrics.text
+
+    with sqlite3.connect(api.AUDIT_PATH) as connection:
+        routes = connection.execute('SELECT route FROM decisions ORDER BY rowid').fetchall()
+    assert routes == [('escalate',), ('auto_respond',)]
+
+    checks = iter([False, True])
+    late_pause = engine.process(ticket, pause_auto_drafts=lambda: next(checks))
+    assert late_pause['guardrails'] == ['automation_paused']
+    assert late_pause['answer'] is None
 
 
 def test_a7_unsupported_claim_blocked(engine):

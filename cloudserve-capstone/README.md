@@ -1,6 +1,6 @@
 # CloudServe Solutions — FDE Capstone
 
-**Status (2026-11-21)** — 24 tests pass and the 80-ticket offline run reconciles to 80 audit records. SAM template validation passes. AWS deployment and live OpenAI calls are pending.
+**Status (2026-11-21)** — 25 tests pass and the 80-ticket offline run reconciles to 80 audit records. Local monitoring and an operator pause are available. See the submission status for verified evidence and open items.
 
 ## What is implemented
 
@@ -24,6 +24,49 @@ python -m uvicorn cloudserve.api:app --host 127.0.0.1 --port 8000
 Open `http://127.0.0.1:8000/docs` for the API demonstration. The evaluation command creates `results.jsonl`, `decisions.sqlite3` and `metrics.json`. The SQLite `decisions` table has one row per input for the run, and `decision_audit` holds the corresponding governance record. It can accept a hidden evaluation path; never hardcode ticket counts or labels.
 
 **Data:** The official capstone `development_tickets.json`, `validation_tickets.json` and `documentation.json` must be in `data/`. They are included on this branch and are equal to the original assignment data after parsing. The validation labels are read only for metrics.
+
+## Local monitoring and operator pause
+
+Keep Uvicorn running on port 8000. Download the native
+[Prometheus binary](https://prometheus.io/download/) and
+[Grafana OSS binary](https://grafana.com/grafana/download?edition=oss)
+for your machine. Run each in a separate terminal from this directory.
+On PowerShell, replace the executable paths with the paths you extracted:
+
+```powershell
+& 'C:\path\to\prometheus.exe' --config.file=monitoring/prometheus.yml --storage.tsdb.path=storage/prometheus --web.listen-address=127.0.0.1:9090
+```
+
+```powershell
+$grafanaHome = 'C:\path\to\grafana'
+$env:GF_SERVER_HTTP_ADDR = '127.0.0.1'
+& "$grafanaHome\bin\grafana.exe" server --homepath "$grafanaHome"
+```
+
+Check the CloudServe target at `http://127.0.0.1:9090/targets`. Open Grafana
+at `http://127.0.0.1:3000`, add a Prometheus datasource using
+`http://127.0.0.1:9090`, and import `monitoring/grafana-dashboard.json`
+with that datasource. Send synthetic tickets through `/docs`, then send
+another set after two five-second scrapes. The dashboard uses changes in
+counters over time. Metrics record channel, outcome and check names.
+They contain no ticket IDs, bodies or customer attributes.
+
+To pause drafts without restarting the API, an operator with write
+access to the app's `storage/` directory creates the marker file below.
+New eligible tickets escalate with `automation_paused`. The engine checks
+again before releasing a generated draft, so a pause detected during
+generation also yields an escalation. Decisions already released cannot
+be recalled.
+
+```powershell
+New-Item -ItemType Directory -Force storage | Out-Null
+New-Item -ItemType File -Force storage/pause-auto-drafts | Out-Null
+# After investigation, resume:
+Remove-Item -LiteralPath storage/pause-auto-drafts
+```
+
+The batch evaluator runs separately. It writes its own files and uses
+neither the running API nor the runtime pause marker.
 
 ## How this maps to assessment A1–A12
 

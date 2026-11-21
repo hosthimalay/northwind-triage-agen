@@ -17,7 +17,7 @@ from dataclasses import asdict, dataclass
 from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 from functools import lru_cache
 
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -342,7 +342,8 @@ class CloudServeEngine:
         self.confidence_threshold = confidence_threshold
         self.retrieval_threshold = retrieval_threshold
 
-    def process(self, raw: Any, index: int = 0) -> dict:
+    def process(self, raw: Any, index: int = 0, *,
+                pause_auto_drafts: Callable[[], bool] | None = None) -> dict:
         start = time.perf_counter()
         ticket = normalise_ticket(raw, index)
         ticket_text = _text_of(ticket)
@@ -351,6 +352,7 @@ class CloudServeEngine:
                       urgency_confidence=0.0, alternatives=[], sources=[], citations=[],
                       guardrails=[], reason='', answer=None, escalation_summary='', generator='none',
                       input_sha256=hashlib.sha256(ticket_text.encode()).hexdigest(), latency_ms=0.0)
+        validated = False
         try:
             cls = self.classifier.predict(ticket_text)
             output.update(cls)
@@ -369,6 +371,9 @@ class CloudServeEngine:
             elif cls['intent'] in BLOCKED_INTENTS:
                 output['reason'] = 'Policy escalation: prohibited intent ' + cls['intent']
                 output['guardrails'] = ['blocked_intent:' + cls['intent']]
+            elif pause_auto_drafts and pause_auto_drafts():
+                output['reason'] = 'Automatic drafts paused by the operator.'
+                output['guardrails'] = ['automation_paused']
             elif cls['intent_confidence'] < self.confidence_threshold:
                 output['reason'] = f'Classifier confidence below threshold {self.confidence_threshold:.2f}.'
             elif not found:
@@ -384,9 +389,13 @@ class CloudServeEngine:
                         answer, citations = _evidence_answer(found)
                         output['generator'] = 'deterministic_extract'
                     guards = validate_answer(answer, citations, self.kb)
+                    validated = True
                     if guards:
                         output['guardrails'] = guards
                         output['reason'] = 'Output blocked: ' + ', '.join(guards)
+                    elif pause_auto_drafts and pause_auto_drafts():
+                        output['reason'] = 'Automatic drafts paused by the operator.'
+                        output['guardrails'] = ['automation_paused']
                     else:
                         output.update(route='auto_respond', answer=answer, citations=citations,
                                       reason='Confidence and source thresholds satisfied; output guardrails passed.')
@@ -403,7 +412,6 @@ class CloudServeEngine:
             output['escalation_summary'] = 'Ticket requires human review after processing error.'
         output['latency_ms'] = round((time.perf_counter() - start) * 1000, 3)
         guards = output['guardrails']
-        validated = output['route'] == 'auto_respond' or output['reason'].startswith('Output blocked:')
         stage = 'validation' if validated else 'generation' if 'generation_failure' in guards else 'routing'
         output['audit'] = {
             'decision_id': uuid.uuid4().hex,
