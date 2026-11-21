@@ -41,9 +41,11 @@ def test_a5_route_is_deterministic(engine):
 
 def test_a6_citations_verified(engine):
     r = engine.process({'ticket_id': 'S3', 'channel': 'chat', 'body': 'Explain API rate limits and quota tiers'})
-    if r['route'] == 'auto_respond':
-        assert r['citations']
-        assert not validate_answer(r['answer'], r['citations'], engine.kb)
+    assert r['route'] == 'auto_respond'
+    assert r['citations']
+    assert {c['doc_id'] for c in r['citations']} <= {s['doc_id'] for s in r['sources']}
+    assert not validate_answer(r['answer'], r['citations'], engine.kb)
+    assert 'citation_mismatch' in validate_answer(r['answer'] + '\nUnverified statement.', r['citations'], engine.kb)
 
 
 def test_a7_security_guardrail_blocks(engine):
@@ -75,12 +77,22 @@ def test_a9_a10_batch_and_metrics(tmp_path):
     tickets = [{'ticket_id': f'B-{i}', 'channel': ['email','chat','docs_comment','forum'][i%4],
                 'body': 'How do I configure API rate limits and quotas?'} for i in range(8)]
     tickets[7]['body'] = ''
+    tickets[:3] = [{'ticket_id': 'collision-2', 'labels': None, 'history': None},
+                   {'ticket_id': 'collision', 'labels': {'expected_doc_ids': [[]]}},
+                   {'ticket_id': 'collision', 'channel': 'email', 'body': '\ud800'}]
     source.write_text(json.dumps(tickets))
     metrics = run_evaluation(source, tmp_path / 'results')
     assert metrics['volume']['tickets_processed'] == 8
     assert metrics['governance']['logging_reconciled']
     assert len((tmp_path / 'results' / 'results.jsonl').read_text().splitlines()) == 8
     assert (tmp_path / 'results' / 'metrics.json').exists()
+    with sqlite3.connect(tmp_path / 'results' / 'decisions.sqlite3') as connection:
+        rows = connection.execute('SELECT ticket_id, record FROM decision_audit').fetchall()
+    assert len(rows) == 8
+    for ticket_id, record in rows:
+        audit = json.loads(record)
+        assert audit['ticket_id'] == ticket_id
+        assert audit['decision_id'] and audit['requirement_ids']
 
 
 def test_a11_malformed_and_missing_docs(engine):
@@ -89,18 +101,19 @@ def test_a11_malformed_and_missing_docs(engine):
         assert r['route'] == 'escalate' and r['reason']
 
 
-def test_a11_provider_outage_fails_closed(engine, monkeypatch):
+@pytest.mark.parametrize('error', [TimeoutError, ConnectionError, type('RateLimitError', (Exception,), {})])
+def test_a11_provider_outage_fails_closed(engine, monkeypatch, error):
     import cloudserve.core as core
     def down(*a, **k):
-        raise TimeoutError('Simulated model provider outage')
+        raise error('Simulated model provider failure')
     monkeypatch.setattr(core, '_openai_selected', down)
     engine.model_enabled = True
     try:
         r = engine.process({'ticket_id': 'outage', 'channel': 'chat',
                             'body': 'Explain API rate limits and quota tiers'})
-        if r['intent_confidence'] >= engine.confidence_threshold and r['sources']:
-            assert r['route'] == 'escalate'
-            assert 'generation_failure' in r['guardrails']
+        assert r['route'] == 'escalate'
+        assert 'generation_failure' in r['guardrails']
+        assert r['answer'] is None
     finally:
         engine.model_enabled = False
 

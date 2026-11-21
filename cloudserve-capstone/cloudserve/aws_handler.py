@@ -1,8 +1,6 @@
 """AWS Lambda + HTTP API adapter with DynamoDB decision audit logging."""
-from datetime import datetime, timezone
 import json
 import os
-import uuid
 from functools import lru_cache
 from .core import CloudServeEngine
 
@@ -16,7 +14,7 @@ def _persist(record):
     import boto3
     table = boto3.resource('dynamodb').Table(os.environ['AUDIT_TABLE'])
     table.put_item(Item={
-        'decision_id': str(uuid.uuid4()), 'recorded_at': datetime.now(timezone.utc).isoformat(),
+        'decision_id': record['audit']['decision_id'], 'recorded_at': record['audit']['timestamp'],
         'ticket_id': record['ticket_id'], 'channel': record['channel'],
         'intent': record['intent'], 'intent_confidence': str(record['intent_confidence']),
         'urgency': record['urgency'], 'urgency_confidence': str(record['urgency_confidence']),
@@ -27,6 +25,7 @@ def _persist(record):
         'guards_json': json.dumps(record['guardrails']),
         'generator': record['generator'], 'latency_ms': str(record['latency_ms']),
         'input_sha256': record['input_sha256'],
+        'audit_json': json.dumps(record['audit']),
     })
 
 
@@ -40,7 +39,10 @@ def handler(event, context):
     if path != '/tickets' or method != 'POST':
         return {'statusCode': 404, 'headers': headers, 'body': json.dumps({'error': 'Not found'})}
     try:
-        ticket = json.loads(event.get('body') or '{}')
+        try:
+            ticket = json.loads(event.get('body') or '{}')
+        except (json.JSONDecodeError, TypeError):
+            ticket = None
         result = _engine().process(ticket)
         # Fail-closed: do not authorise an automated answer if audit persistence fails.
         try:

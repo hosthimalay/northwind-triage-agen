@@ -12,6 +12,7 @@ import os
 import re
 import sqlite3
 import time
+import uuid
 from dataclasses import asdict, dataclass
 from collections import Counter, defaultdict
 from datetime import datetime, timezone
@@ -49,7 +50,8 @@ def _json(obj: Any) -> str:
 
 
 def _safe_text(raw: Any, limit: int = 40000) -> str:
-    return (raw if isinstance(raw, str) else str(raw or ''))[:limit]
+    text = (raw if isinstance(raw, str) else str(raw or ''))[:limit]
+    return text.encode('utf-8', errors='replace').decode('utf-8')
 
 
 @dataclass
@@ -100,17 +102,19 @@ class KnowledgeBase:
         scores = cosine_similarity(self.vectorizer.transform([text]), self.matrix)[0]
         prior = self.doc_priors.get(intent) or Counter()
         total = sum(prior.values())
-        # Boost .15 selected on grouped development holdouts (not evaluation).
-        ranked = sorted(enumerate(scores), key=lambda v: (
-            -(float(v[1]) + (0.15 * prior.get(self.passages[v[0]].doc_id, 0) / total
-                                if total else 0.0)), self.passages[v[0]].doc_id))
+        # A .25 prior improved top-source matching in four grouped development splits.
+        candidates = [
+            Passage(passage.doc_id, passage.title, passage.text, float(score),
+                    float(score) + (0.25 * prior[passage.doc_id] / total if total else 0.0))
+            for passage, score in zip(self.passages, scores) if score >= threshold
+        ]
         # The relevance threshold tests RAW similarity, so a historical prior
         # can never turn an unrelated document into an apparent retrieval hit.
-        return [Passage(self.passages[i].doc_id, self.passages[i].title,
-                        self.passages[i].text, round(float(score), 5),
-                        round(float(score) + (0.15 * prior.get(self.passages[i].doc_id, 0) / total
-                                             if total else 0.0), 5))
-                for i, score in ranked if float(score) >= threshold][:limit]
+        ranked = sorted(candidates, key=lambda passage: (-passage.ranking_score, passage.doc_id))[:limit]
+        for passage in ranked:
+            passage.score = round(passage.score, 5)
+            passage.ranking_score = round(passage.ranking_score, 5)
+        return ranked
 
     def verified(self, doc_id: str, excerpt: str) -> bool:
         doc = self.documents.get(doc_id)
@@ -188,18 +192,21 @@ def _evidence_answer(sources: list[Passage], selected: list[tuple[str, str]] | N
     if selected is None:
         selected = [(sources[0].doc_id, step) for step in source_steps(sources[0].text)]
     citations = []
-    lines = []
     for doc_id, quote in selected[:4]:
         matching = next((s for s in sources if s.doc_id == doc_id), None)
         if not matching or quote not in matching.text:
             raise ValueError(f'Unverifiable quote for {doc_id}')
         citations.append({'doc_id': doc_id, 'excerpt': quote, 'title': matching.title})
-        lines.append(f'{len(lines)+1}. {quote} [{doc_id}]')
-    if not lines:
+    if not citations:
         raise ValueError('No verifiable resolution steps')
+    return _format_answer(citations), citations
+
+
+def _format_answer(citations: list[dict]) -> str:
+    lines = [f"{i}. {item['excerpt']} [{item['doc_id']}]" for i, item in enumerate(citations, 1)]
     return ('This is a support draft assembled from the verified knowledge-base articles below. '
             'Please check the steps against your situation:\n\n' + '\n'.join(lines)
-            + '\n\nIf the issue remains, reply with the outcome of the steps so a support engineer can investigate.'), citations
+            + '\n\nIf the issue remains, reply with the outcome of the steps so a support engineer can investigate.')
 
 
 @lru_cache(maxsize=1)
@@ -244,7 +251,7 @@ def _openai_selected(sources: list[Passage], ticket: dict) -> list[tuple[str, st
     """Optional LLM selects verbatim evidence quotes. It cannot invent final text."""
     from openai import OpenAI
     eligible = [{'doc_id': s.doc_id, 'steps': source_steps(s.text, max_steps=5)} for s in sources]
-    client = OpenAI(api_key=_openai_key(), timeout=20, max_retries=1)
+    client = OpenAI(api_key=_openai_key(), timeout=8, max_retries=1)
     res = client.chat.completions.create(
         model=os.getenv('OPENAI_MODEL', 'gpt-4.1-mini'), temperature=0,
         response_format={'type': 'json_object'},
@@ -259,16 +266,25 @@ def _openai_selected(sources: list[Passage], ticket: dict) -> list[tuple[str, st
         ])
     parsed = json.loads(res.choices[0].message.content or '{}')
     choices = parsed.get('selected', [])
-    if not isinstance(choices, list):
-        raise ValueError('Invalid model response: selected must be a list')
-    return [(str(x['doc_id']), str(x['quote'])) for x in choices if isinstance(x, dict) and 'doc_id' in x and 'quote' in x]
+    if not isinstance(choices, list) or not 1 <= len(choices) <= 3:
+        raise ValueError('Expected one to three evidence selections')
+    allowed = {(source['doc_id'], step) for source in eligible for step in source['steps']}
+    selected = []
+    for choice in choices:
+        if not isinstance(choice, dict):
+            raise ValueError('Invalid evidence selection')
+        pair = (str(choice.get('doc_id')), str(choice.get('quote')))
+        if pair not in allowed or pair in selected:
+            raise ValueError('Selection must be a distinct offered resolution step')
+        selected.append(pair)
+    return selected
 
 
 def validate_answer(answer: str, citations: list[dict], kb: KnowledgeBase) -> list[str]:
     findings = []
     if not citations or any(not kb.verified(c['doc_id'], c['excerpt']) for c in citations):
         findings.append('unsupported_citation')
-    if any(f"[{c['doc_id']}]" not in answer or c['excerpt'] not in answer for c in citations):
+    if answer != _format_answer(citations):
         findings.append('citation_mismatch')
     if GENERIC_UNSUPPORTED.search(answer):
         findings.append('unsupported_commitment')
@@ -290,15 +306,20 @@ class DecisionStore:
           urgency TEXT, urgency_confidence REAL, route TEXT, reason TEXT, sources TEXT,
           citations TEXT, guards TEXT, generator TEXT, latency_ms REAL, input_sha256 TEXT,
           PRIMARY KEY(run_id,ticket_id))''')
+        self.conn.execute('''CREATE TABLE IF NOT EXISTS decision_audit (
+          run_id TEXT NOT NULL, ticket_id TEXT NOT NULL, record TEXT NOT NULL,
+          PRIMARY KEY(run_id,ticket_id))''')
         self.conn.commit()
 
     def save(self, run_id: str, item: dict) -> None:
         self.conn.execute('''INSERT OR REPLACE INTO decisions VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''', (
-            run_id, item['ticket_id'], _now(), item['channel'], item['intent'],
+            run_id, item['ticket_id'], item['audit']['timestamp'], item['channel'], item['intent'],
             item['intent_confidence'], _json(item['alternatives']), item['urgency'],
             item['urgency_confidence'], item['route'], item['reason'],
             _json(item['sources']), _json(item['citations']), _json(item['guardrails']),
             item['generator'], item['latency_ms'], item['input_sha256']))
+        self.conn.execute('INSERT OR REPLACE INTO decision_audit VALUES (?,?,?)',
+                          (run_id, item['ticket_id'], _json(item['audit'])))
         self.conn.commit()
 
     def count(self, run_id: str) -> int:
@@ -373,7 +394,7 @@ class CloudServeEngine:
                     output['reason'] = 'Safe escalation on model or evidence failure: ' + type(exc).__name__
                     output['guardrails'] = ['generation_failure']
             if output['route'] == 'escalate':
-                output['escalation_summary'] = (f"{ticket['subject'] or '(No subject)'}: "
+                output['escalation_summary'] = (f"{redact_before_provider(ticket['subject']) or '(No subject)'}: "
                     f"{redact_before_provider(ticket['body'])[:260]} | intent={output['intent']}, urgency={output['urgency']}; "
                     f"reason={output['reason']}; docs={','.join(s['doc_id'] for s in output['sources']) or 'none'}")
         except Exception as exc:
@@ -381,4 +402,36 @@ class CloudServeEngine:
             output['guardrails'].append('processing_failure')
             output['escalation_summary'] = 'Ticket requires human review after processing error.'
         output['latency_ms'] = round((time.perf_counter() - start) * 1000, 3)
+        guards = output['guardrails']
+        validated = output['route'] == 'auto_respond' or output['reason'].startswith('Output blocked:')
+        stage = 'validation' if validated else 'generation' if 'generation_failure' in guards else 'routing'
+        output['audit'] = {
+            'decision_id': uuid.uuid4().hex,
+            'timestamp': _now(),
+            'ticket_id': output['ticket_id'],
+            'stage': stage,
+            'input_summary': {'channel': ticket['channel'], 'sha256': output['input_sha256']},
+            'model': {'name': 'TF-IDF logistic regression', 'version': 'cloudserve-char-intent-v2',
+                      'evidence_generator': output['generator']},
+            'prediction': {'value': output['intent'], 'confidence': output['intent_confidence'],
+                           'urgency': output['urgency'], 'urgency_confidence': output['urgency_confidence']},
+            'alternatives': [{'value': alt['intent'], 'confidence': alt['confidence']}
+                             for alt in output['alternatives']],
+            'sources_used': [{'doc_id': source['doc_id'], 'score': source['score']}
+                             for source in output['sources']],
+            'threshold_applied': self.confidence_threshold,
+            'retrieval_threshold': self.retrieval_threshold,
+            'action_taken': 'block' if validated and guards else output['route'],
+            'reason': output['reason'],
+            'guardrail_results': {
+                'pii': ('fail' if any(g.startswith('private_data:') for g in guards) else 'pass')
+                       if validated else 'not_run',
+                'grounding': ('fail' if any(g in guards for g in ('unsupported_citation', 'citation_mismatch'))
+                              else 'pass') if validated else 'not_run',
+                'tone': 'not_assessed',
+                'findings': guards,
+            },
+            'prompt_version': 'PR-01 v1' if self.model_enabled and stage in ('generation', 'validation') else None,
+            'requirement_ids': ['A3', 'A4', 'A5', 'A6', 'A7', 'A8', 'A11'],
+        }
         return output

@@ -12,11 +12,11 @@ app = FastAPI(title='CloudServe AI Support Resolution', version='0.2.0')
 class TicketInput(BaseModel):
     model_config = ConfigDict(extra='allow', json_schema_extra={'example': {
         'ticket_id': 'DEMO-003', 'channel': 'chat',
-        'subject': 'HTTP 429 API rate limit exceeded',
-        'body': 'Our API calls return 429 Too Many Requests. How can we use exponential backoff?'
+        'subject': 'HTTP 429 Too Many Requests API rate limit exceeded',
+        'body': 'Requests exceed rate limit, please explain quota and backoff.'
     }})
-    ticket_id: str
-    channel: str
+    ticket_id: str = ''
+    channel: str = ''
     subject: str = ''
     body: str = ''
 
