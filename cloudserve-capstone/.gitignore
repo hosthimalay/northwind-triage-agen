@@ -6,3 +6,4 @@ __pycache__/
 storage/
 evaluation/results/
 *.sqlite3
+.aws-sam/

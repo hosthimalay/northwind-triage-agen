@@ -14,7 +14,7 @@
 
 11:00–14:00 — Run `python -m cloudserve.evaluation --input data/validation_tickets.json --output evaluation/demo` uninterrupted; open results JSONL and SQLite DB, reconcile exactly 80 tickets, display metrics. Run `python -m pytest tests/ -q`.
 
-14:00–17:00 — Explain the latest offline run: 65 automatic drafts, 15 escalations, 92.5% retrieval hit, 93.8% evaluated citation accuracy, zero unsafe auto sends. Contrast against the earlier 56/24, 83.0% retrieval, 95.1% citations and explain that the citation target is not yet met. Crucially, 70% is NOT measured FCR. Run `python -m evaluation.grouped_audit` and explain 62/80 body overlap and 48% urgency grouped holdout.
+14:00–17:00 — Explain the 21 November run: 65 automatic drafts, 15 escalations, 49/53 labelled top-three retrieval hits, and 135/144 per-citation reference matches (93.75%). All 195 emitted excerpts were checked against the retrieved articles. The reference-match target remains below 95%. Explain the difference between quoting an article accurately and choosing the right article for the ticket. Draft rate (81.25%) is a proxy for automation. Customer first-contact resolution requires closure data. Mention the 62/80 validation body overlap and show the calibration bands and urgency limitations.
 
 17:00–18:00 — Governance: privacy, citations, no model override of deterministic rules, safe outage path and fairness group gaps.
 

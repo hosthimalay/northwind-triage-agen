@@ -1,4 +1,16 @@
-# Submission status - 16 November 2026
+# Submission status
+
+## 21 November 2026 verification
+
+- 24 tests passed. The local FastAPI application was exercised through its ASGI interface for all four channels and the compromise guardrail.
+- Official validation processed and logged 80 tickets. It produced 65 automatic drafts and 15 escalations. All 14 reference-prohibited tickets escalated.
+- Top-three retrieval matched the reference on 49 of 53 labelled tickets. All 195 emitted citations resolved to retrieved source text. Of the 144 citations with reference document labels, 135 matched (93.75%, below the 95% target).
+- The intent-conditioned article boost increased from 0.15 to 0.25 after a grouped development comparison. Across four overlapping splits, top-source matches increased from 296/334 to 302/334. Top-three recall and the official validation citation figure were unchanged. A hard prior filter lost correct sources on development data and was discarded.
+- Confidence bands show large gaps. Validation is optimistic because 62 of 80 ticket bodies overlap development. Urgency remains advisory. Citation-match spreads across the labelled slices were 9.5 points by tier, 12.5 by region and 7.5 by language fluency. These are sample estimates and do not clear the five-point governance target.
+- SAM template validation passed after enabling the HTTP API IAM authorizer. The image build could not reach Docker Desktop's Linux engine. A credential-missing OpenAI run escalated safely. AWS deployment and a live OpenAI response remain pending.
+- The assessor's hidden set, two-person hallucination review, customer outcomes, completed submission draft and recorded video remain pending.
+
+## Earlier draft inventory
 
 - Python source: local 22 tests pass; revised 80-ticket offline evaluation complete.
 - Metrics and grouped development experiment are committed in evaluation/.

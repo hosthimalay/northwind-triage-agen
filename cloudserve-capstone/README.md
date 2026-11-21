@@ -1,6 +1,6 @@
 # CloudServe Solutions — FDE Capstone
 
-**Status (2026-11-16):** improved offline evaluation and AWS container-image deployment files prepared; AWS deployment and live OpenAI calls remain NOT verified. Built as a separate extension of the Northwind triage case study.
+**Status (2026-11-21)** — 24 tests pass and the 80-ticket offline run reconciles to 80 audit records. SAM template validation passes. AWS deployment and live OpenAI calls are pending.
 
 ## What is implemented
 
@@ -21,19 +21,9 @@ python -m cloudserve.evaluation --input data/validation_tickets.json --output ev
 python -m uvicorn cloudserve.api:app --host 127.0.0.1 --port 8000
 ```
 
-Open `http://127.0.0.1:8000/docs` for the API demonstration. The evaluation command creates `results.jsonl`, `decisions.sqlite3` and `metrics.json`. It can accept a hidden evaluation path; never hardcode ticket counts or labels.
+Open `http://127.0.0.1:8000/docs` for the API demonstration. The evaluation command creates `results.jsonl`, `decisions.sqlite3` and `metrics.json`. The SQLite `decisions` table has one row per input for the run, and `decision_audit` holds the corresponding governance record. It can accept a hidden evaluation path; never hardcode ticket counts or labels.
 
-**Data:** The official capstone `development_tickets.json`, `validation_tickets.json` and `documentation.json` must be in `data/`. They are included in the downloadable project package; if only the source directory is copied to GitHub without the data, import these files from the official pack before running. Never train on validation labels.
-
-## OpenAI option
-
-```bash
-# Export through your shell or a secrets manager. Never commit a key.
-export OPENAI_API_KEY='YOUR_KEY_HERE'
-python -m cloudserve.evaluation --input data/validation_tickets.json --output evaluation/openai-results --use-openai
-```
-
-On PowerShell, use `$env:OPENAI_API_KEY = 'YOUR_KEY_HERE'`. This incurs API costs; use a small development subset before the full run. The model is constrained to selecting exact, pre-supplied document excerpts. Python verifies each quoted excerpt and builds the customer-facing draft; a model cannot override escalation rules.
+**Data:** The official capstone `development_tickets.json`, `validation_tickets.json` and `documentation.json` must be in `data/`. They are included on this branch and are equal to the original assignment data after parsing. The validation labels are read only for metrics.
 
 ## How this maps to assessment A1–A12
 
@@ -72,19 +62,6 @@ Run `python -m evaluation.grouped_audit` to inspect duplicate texts across split
 
 When this project is placed inside the existing Northwind repository as `cloudserve-capstone/`, copy `.github/workflows/cloudserve-test.yml` to the **repository root** `.github/workflows/` so GitHub Actions recognises it. The CI job skips evaluation when official datasets have not been uploaded and explicitly prints that the run was skipped; it must not be represented as a passed assessment run.
 
-## Optional AWS SAM (not yet deployed)
-
-After configuring an AWS account/role, AWS SAM CLI and the Tokyo region:
-
-```bash
-cd cloudserve-capstone
-sam build --template-file infra/template.yaml
-sam deploy --guided --region ap-northeast-1
-```
-
-The API uses IAM authentication, so calling it requires an authenticated Signature V4 client. Verify the deployed function and DynamoDB audit table in the AWS Console before claiming the cloud test passed. No AWS resource has been created in this project session.
-
-
 ## 2026-11-16 offline engineering revision
 
 We improved the intent representation and retrieval after seeing that two
@@ -117,8 +94,8 @@ Urgency remains advisory only.
 {
   "ticket_id": "DEMO-003",
   "channel": "chat",
-  "subject": "HTTP 429 API rate limit exceeded",
-  "body": "Our API calls return 429 Too Many Requests. How can we use exponential backoff?"
+  "subject": "HTTP 429 Too Many Requests API rate limit exceeded",
+  "body": "Requests exceed rate limit, please explain quota and backoff."
 }
 ```
 
@@ -151,8 +128,8 @@ labels in the runtime image.
 
    ```bash
    sam validate --template-file infra/template.yaml
-   sam build --template-file infra/template.yaml --use-container
-   sam deploy --guided --region ap-northeast-1 \
+   sam build --template-file infra/template.yaml
+   sam deploy --guided --stack-name cloudserve-capstone --region ap-northeast-1 \
       --parameter-overrides UseOpenAI=1 OpenAISecretArn=<YOUR_SECRET_ARN>
    ```
 
