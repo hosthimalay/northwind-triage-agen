@@ -16,9 +16,9 @@
 
 14:00–17:00 — Explain the 21 November run: 65 automatic drafts, 15 escalations, 49/53 labelled top-three retrieval hits, and 135/144 per-citation reference matches (93.75%). All 195 emitted excerpts were checked against the retrieved articles. The reference-match target remains below 95%. Explain the difference between quoting an article accurately and choosing the right article for the ticket. Draft rate (81.25%) is a proxy for automation. Customer first-contact resolution requires closure data. Mention the 62/80 validation body overlap and show the calibration bands and urgency limitations.
 
-17:00–18:00 — Governance: privacy, citations, no model override of deterministic rules, safe outage path and fairness group gaps.
+17:00–18:30 — Governance: create `storage/pause-auto-drafts`, submit a normal ticket and show its logged pause escalation. Remove the marker and repeat. Show live monitoring after verifying the local Grafana import. Explain privacy coverage and the fairness gaps.
 
-18:00–20:00 — PRD revision, architecture decisions, limitations (OpenAI and AWS unverified unless separately demonstrated), future Jira/Confluence integration and human pilot. On-camera close.
+18:30–20:00 — PRD revision, architecture decisions and remaining human review. On-camera close.
 
 ## Recording checklist
 

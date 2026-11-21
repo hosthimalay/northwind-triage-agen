@@ -1,6 +1,11 @@
 # Submission status
 
-## 21 November 2026 verification
+## 21 November 2026 verification and follow-up
+
+- The current suite has 25 tests. The additional API test confirms pause, resume, escalation if paused during generation, audit persistence and metrics exposition.
+- The local Prometheus configuration and six-panel Grafana dashboard are in `monitoring/`. The batch grading command has no running monitoring dependencies.
+- The fairness report now includes ticket length. In this run the short slice matched 132/138 references. The long slice matched 3/6 and contains only two tickets, which is too small for a stable comparison.
+- Additional grouped development experiments tested alternate relevance thresholds, title weights and similar historical tickets. The baseline thresholds remain in use. See `ENGINEERING_EXPERIMENT.md`.
 
 - 24 tests passed. The local FastAPI application was exercised through its ASGI interface for all four channels and the compromise guardrail.
 - Official validation processed and logged 80 tickets. It produced 65 automatic drafts and 15 escalations. All 14 reference-prohibited tickets escalated.

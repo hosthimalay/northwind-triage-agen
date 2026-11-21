@@ -63,3 +63,25 @@ solely to increase automation.
 - Live OpenAI/AWS deployment is not verified by these offline experiments.
 
 Reproduce via `python -m evaluation.classifier_comparison`.
+
+## Additional grouped development checks
+
+Four body-grouped splits used `GroupShuffleSplit(n_splits=4, test_size=.22,
+random_state=42)`. Each split fit a separate classifier and indexed the 29
+articles. The prior was built from the training tickets of that split.
+Results below pool held-out decisions across the four overlapping splits.
+
+| Raw relevance threshold | Top-source matches | Top-three matches | Retrieval on rows with no expected document |
+|---|---:|---:|---:|
+| 0.12 (current) | 302/334 | 305/334 | 99 |
+| 0.10 | 305/334 | 310/334 | 105 |
+| 0.08 | 303/334 | 324/334 | 120 |
+
+The last column is a diagnostic for retrieval breadth. No expected document
+label does not prove every retrieved article is irrelevant. The experiment
+did not change classification or the policy guardrails. Adding title
+similarity at the current threshold and boosting a source by the closest
+same-intent training ticket each left the top-source match count unchanged.
+Keep the current ranking and relevance cutoff pending the independent answer
+review. The modest gain at 0.10 came with more evidence candidates for rows
+without reference documents. No validation labels were used to choose the cutoff.

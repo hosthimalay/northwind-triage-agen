@@ -33,6 +33,13 @@ def _expected_docs(ticket):
     return {value for value in values if isinstance(value, str)} if isinstance(values, list) else set()
 
 
+def _ticket_length(ticket):
+    body = ticket.get('body')
+    if not isinstance(body, str) or not body.strip():
+        return 'unknown'
+    return 'short (40 words or fewer)' if len(body.split()) <= 40 else 'long (over 40 words)'
+
+
 def _classification_metrics(tickets, results, field):
     pairs = [(label, r[field], r[field + '_confidence']) for t, r in zip(tickets, results)
              if isinstance(label := _metadata(t, 'labels').get(field), str)]
@@ -61,10 +68,10 @@ def _classification_metrics(tickets, results, field):
                           for label, p, r, f, s in zip(labels, precision, recall, f1, support)}}
 
 
-def _segment_stats(tickets, outputs, field):
+def _segment_stats(tickets, outputs, segment):
     groups = defaultdict(lambda: {'total': 0, 'auto': 0, 'unsafe_auto': 0, 'citation_ok': 0, 'citation_total': 0})
     for raw, r in zip(tickets, outputs):
-        g = groups[str(raw.get(field) or 'unknown') if isinstance(raw, dict) else 'unknown']
+        g = groups[segment(raw) if isinstance(raw, dict) else 'unknown']
         g['total'] += 1
         if r['route'] == 'auto_respond':
             g['auto'] += 1
@@ -107,7 +114,7 @@ def build_metrics(tickets, outputs, decisions_logged, run_id):
                          'Actual FCR requires post-response customer outcomes; this is an upper bound.'),
                      'historical_first_contact_resolution': pct(sum(historical_fcr), len(historical_fcr)),
                      'mean_response_time_ms': response_mean,
-                     'median_response_time_ms': _latency(latency, .5),
+                     'median_response_time_ms': round(statistics.median(latency), 3) if latency else None,
                      'response_time_note': 'Processing latency proxy, not measured end-to-end customer first response.',
                      'historical_mean_resolution_minutes': round(statistics.mean(historical), 2) if historical else None,
                      'escalation_rate': pct(total-auto, total)},
@@ -120,7 +127,7 @@ def build_metrics(tickets, outputs, decisions_logged, run_id):
                       'citations_matching_reference': cite_correct,
                       'citations_evaluated': citation_count,
                       'citation_eligible_answered_tickets': len(cite_eligible),
-                      'latency_median_ms': _latency(latency, .5),
+                      'latency_median_ms': round(statistics.median(latency), 3) if latency else None,
                       'latency_p95_ms': _latency(latency, .95)},
         'governance': {'decisions_logged': decisions_logged,
                        'logging_reconciled': decisions_logged == total,
@@ -128,8 +135,11 @@ def build_metrics(tickets, outputs, decisions_logged, run_id):
                        'private_data_detections': sum('private_data:' in g for r in outputs for g in r['guardrails']),
                        'unsafe_automatic_responses': sum(r['route']=='auto_respond' for t, r in hard_prohibited),
                        'unsafe_labeled_tickets': len(hard_prohibited),
-                       'fairness_slices': {f: _segment_stats(tickets, outputs, f)
-                          for f in ['customer_tier', 'customer_region', 'language_fluency']}},
+                       'fairness_slices': {
+                           **{field: _segment_stats(tickets, outputs, lambda t: str(t.get(field) or 'unknown'))
+                              for field in ['customer_tier', 'customer_region', 'language_fluency']},
+                           'ticket_length': _segment_stats(tickets, outputs, _ticket_length),
+                       }},
         'limitations': ['Evaluation labels are used for metrics only, never for ticket routing.',
                         'Automated-response rate is not actual first-contact resolution.',
                         'Confidence scores are logistic-regression probabilities; calibration requires further study.',
