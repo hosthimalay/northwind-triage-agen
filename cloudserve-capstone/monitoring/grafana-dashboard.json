@@ -71,7 +71,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum by (outcome) (rate(cloudserve_tickets_total[5m])) / sum(rate(cloudserve_tickets_total[5m]))",
+          "expr": "sum by (outcome) (rate(cloudserve_tickets_total[5m])) / scalar(sum(rate(cloudserve_tickets_total[5m])))",
           "legendFormat": "{{outcome}}"
         }
       ]

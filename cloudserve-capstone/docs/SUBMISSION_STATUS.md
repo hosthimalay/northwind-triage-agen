@@ -3,7 +3,7 @@
 ## 21 November 2026 verification and follow-up
 
 - The current suite has 25 tests. The additional API test confirms pause, resume, escalation if paused during generation, audit persistence and metrics exposition.
-- The local Prometheus configuration and six-panel Grafana dashboard are in `monitoring/`. The batch grading command has no running monitoring dependencies.
+- The local Prometheus configuration and six-panel Grafana dashboard are in `monitoring/`. A native Prometheus server scraped the running FastAPI app, and every dashboard query returned samples after synthetic draft and compromise tickets. Grafana import and visual rendering remain unverified. The batch grading command has no running monitoring dependencies.
 - The fairness report now includes ticket length. In this run the short slice matched 132/138 references. The long slice matched 3/6 and contains only two tickets, which is too small for a stable comparison.
 - Additional grouped development experiments tested alternate relevance thresholds, title weights and similar historical tickets. The baseline thresholds remain in use. See `ENGINEERING_EXPERIMENT.md`.
 
